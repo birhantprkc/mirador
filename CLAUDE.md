@@ -492,10 +492,27 @@ everything not on it. Second, **it is the first widget that reads something
 1.89, pure-Rust bindings, NetBSD supported) rather than a polled process per
 platform: `pmset -g batt`, sysfs and a PowerShell query are three code paths to
 keep honest for one fact, and the crate's macOS bindings were already in the
-tree under `sysinfo`. Third, **the face is the pomodoro's** — label, numerals,
-meter, detail — and it is calm on purpose: brass while there is plenty, amber
+tree under `sysinfo`. Third, **the face is a battery, drawn** — label, a rounded cell with
+its terminal filled to the charge and the figure in plain bold beside it,
+detail — and it is calm on purpose: brass while there is plenty, amber
 and red only when the charge is low *and* the machine is running on it, and
-charging told by the label rather than by flooding the panel green. The first
+charging told by the label rather than by flooding the panel green.
+
+**The face shipped first as the pomodoro's — numerals over a meter — and the
+owner rejected it on sight on 2026-09-18: the big charge figure looked like
+the clock.** That is the calculator's tape decision arriving at a third panel,
+and the rule it leaves is worth stating once: **block numerals are for one
+continuously changing value glanced at across a room, and nothing else.** The
+clock and the pomodoro qualify; a charge that moves once an hour and is read
+in the same glance as its label does not, and a face that borrows the numerals
+borrows the clock's identity with them. The replacement is the one shape a
+battery has everywhere else — a rounded cell with a nub, filling from the
+left — because it is nothing else on the dashboard, which is the whole point.
+The cell keeps a three-to-one shape as it grows (`COLUMNS_PER_ROW`), stops at
+three interior rows because a taller one reads as a box, and gives up its
+outline before its figure: too short or too narrow and it is the bare meter
+with `80%` beside it, which is what it always was underneath. The figure is
+bold body text, not a small face of its own; `%` sits muted beside it. The first
 capture said `PLUGGED IN` in the border and again inside, and `holding at 80%`
 under a five-row `80`; that is the tasks-panel duplication of 1.10.0 arriving
 in a new panel, and the rule from that pass holds here — the time lives in the
@@ -1912,9 +1929,20 @@ survive it.** Re-measure rather than implementing what the issue says.
 panel failing — is a trailing-NUL bug in `starship-battery`'s NetBSD backend,
 fixed by [starship/rust-battery#168](https://github.com/starship/rust-battery/pull/168)
 and confirmed on real hardware by the reporter on 2026-09-14. It closes when a
-`starship-battery` release carries the fix and mirador bumps to it. 1.12.1
-went out without it, on 2026-09-14, for a `rustls` advisory that could not
-wait, so the battery fix is the next release's.
+`starship-battery` release carries the fix and mirador bumps to it. Three
+releases have now gone out without it — 1.12.1 on 2026-09-14 for a `rustls`
+advisory that could not wait, then 1.13.0 and 1.13.1 on 2026-09-15 — because
+the wait is on someone else's release and finished work is not held for it.
+It belongs to whichever mirador release follows the bump.
+
+**The reporter is also the pkgsrc packager, and his cadence is worth knowing
+rather than guessing at.** This file used to imply pkgsrc tracks each release
+closely; it does not, and nothing here was checking. `sysutils/mirador` went
+from 1.12.0 straight to **1.13.1** on 2026-09-16, about twenty-one hours
+after that release — so 1.12.1 and 1.13.0 were never packaged at all. He
+skips versions and batches them, which is his call entirely and needs no
+chasing. Read `DISTNAME` in NetBSD/pkgsrc's `sysutils/mirador/Makefile` if
+you want to know what NetBSD users actually have.
 
 **Where #168 stands, and the decision not to nudge yet.** A starship
 maintainer reviewed it on 2026-09-13, asking for `CStr` or `strip_suffix`.
@@ -1926,6 +1954,18 @@ approved. **The owner chose to wait a week before nudging, and a read-only
 check is scheduled for 2026-09-21** to report whether it merged, whether
 anything is owed, or whether a polite nudge is now reasonable. Do not nudge
 before then.
+
+**It was approved on 2026-09-15 at 16:21 UTC**, by the same maintainer who
+had asked for the change — spotted by the owner, and confirmed through the
+API rather than from these notes. It is still open and unmerged: it merges
+cleanly, every check passes on head `80b2a35` (the NetBSD and FreeBSD
+build-only jobs included), and GitHub calls it blocked, which on an approved
+green PR means it is waiting for a maintainer to press merge. So **the nudge
+the paragraph above plans is now very probably pointless** — the person who
+would receive it has just approved it — and the 09-21 check should simply
+report MERGED or WAIT. The thing actually worth watching is not the merge
+but a `starship-battery` release above 0.11.1, which is what mirador can
+bump to; the daily triage routine prints that version every run.
 
 When that day comes, **check the PR before spending the nudge**: whether it
 still merges cleanly, whether CI has run and is green on the head, and whether
