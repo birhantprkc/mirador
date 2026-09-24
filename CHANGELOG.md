@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **The dashboard's own keys can be changed** (#284). A `[keys]` section
+  moves any of them — focus, help, quit, the panel and theme pickers, arrange
+  mode and the four resize keys — to another key, to several, or to none, and
+  the status bar, help overlay and arrange legend show the keys you chose.
+  Written in words: `resize_wider = "alt+right"`. Ctrl+C and Esc cannot be
+  bound, resize keys need Ctrl or Alt, and a key given to two actions is
+  refused at startup. The panels' own keys are not configurable yet.
+- **A key map, on `?` pressed twice.** Every key the dashboard reads, its
+  default and what it does, with changed keys picked out and the config file
+  to edit named. `r` reloads `[keys]` without a restart, reporting a mistake
+  rather than applying it, and `d` puts every key back to its default after
+  asking, by commenting out your `[keys]` lines.
+- **`mirador --reset-keys`**, the same reset from the command line, for a
+  keymap mistake that stops mirador starting. The startup error names it.
+
 ## [1.16.0] - 2026-09-18
 
 ### Added

@@ -858,6 +858,7 @@ Every flag is optional; with none of them mirador opens the dashboard.
 | `--print-config` | Print the default config to stdout and exit |
 | `--migrate-config` | Update a config written by an older version |
 | `--reset-config` | Replace the config with the defaults, keeping a copy |
+| `--reset-keys` | Put every key back to its default by commenting out `[keys]` |
 | `--factory-reset` | Start over: config, preferences, tasks, notes and watchlist all set aside |
 | `--update` | Update through the installer or Cargo and exit |
 | `-y`, `--yes` | Do not ask for confirmation |
@@ -872,6 +873,9 @@ Neither reset deletes anything. Every file they touch is renamed to a numbered
 `.bak` beside itself, and both list what they will affect before doing it.
 They are also separate commands rather than degrees of one: `--reset-config` is
 about configuration, `--factory-reset` about everything mirador has written.
+`--reset-keys` is narrower than either: it comments out the lines under
+`[keys]` in the config and changes nothing else, for a keymap mistake that
+stops mirador starting.
 
 ## Keys
 
@@ -885,6 +889,51 @@ about configuration, `--factory-reset` about everything mirador has written.
 | `t` | Choose a theme, previewing as you move — see below |
 | `Ctrl+←→↑↓` | Resize the focused panel against its neighbour |
 | `q` / `Ctrl+C` | Quit |
+
+### Changing the keys
+
+Every key in the table above except `1` – `9` and `Ctrl+C` can be moved in the
+config's `[keys]` section, which lists each action with its default. Change
+the ones you want and leave the rest:
+
+```toml
+[keys]
+# Ctrl+arrows switch desktops on a Mac, so resize with Option instead.
+resize_wider    = "alt+right"
+resize_narrower = "alt+left"
+resize_taller   = "alt+down"
+resize_shorter  = "alt+up"
+quit            = ["q", "x"]   # several keys for one action
+theme           = []           # or none at all
+```
+
+Keys are written in words — `q`, `?`, `tab`, `shift+tab`, `space`, `f5`,
+`ctrl+left`, `alt+h` — and the status bar, the help overlay and the arrange
+legend all show the keys you chose rather than the defaults. On a Mac, Option
+works as Alt once the terminal sends it that way ("Use Option as Meta key" in
+Terminal, "Esc+" in iTerm2); terminals differ in what Option with an arrow
+sends, and `alt+h`/`j`/`k`/`l` work in all of them.
+
+A few rules keep a keymap from locking you out. `Ctrl+C` always quits and
+`Esc` always backs out of whatever is open, so neither can be bound. The resize
+keys are read before the focused panel sees them, so each needs `Ctrl` or `Alt`
+held. Every other key is offered to the focused panel first, the way `q` is
+today. And a key given to two actions is refused at startup, naming the line to
+change. The panels' own keys are not configurable yet.
+
+**Press `?` twice** for the key map: every one of these actions with the key it
+has now, its default, and what it does, with the keys you changed picked out.
+It also says which file to edit, and it has three keys of its own:
+
+- `r` reloads `[keys]`, so you can edit the config in another pane and try the
+  result without restarting. A mistake is shown in the dialog and the keys you
+  had stay in force.
+- `d` puts every key back to its default, after asking. Your `[keys]` lines are
+  commented out rather than deleted, with a line above them saying when.
+- `Esc` closes it.
+
+If a mistake in `[keys]` stops mirador starting, the error says so, and
+`mirador --reset-keys` does the same reset from the command line.
 
 ### Rearranging the dashboard
 
