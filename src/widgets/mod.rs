@@ -48,6 +48,111 @@ pub const WIDGET_NAMES: &[&str] = &[
     "calculator",
 ];
 
+/// A panel whose keys can be moved, under `[<widget>.keys]` in the config.
+///
+/// The shell reaches every such table through this list — to check it at
+/// startup, reload or reset it from the key map, and list it there — so a
+/// panel that moves its keys to a [`crate::keymap::PanelKeymap`] is added
+/// here and nowhere else in the shell.
+pub struct KeyScope {
+    pub widget: &'static str,
+    pub keys: fn(&Config) -> &crate::keymap::KeysConfig,
+    pub keys_mut: fn(&mut Config) -> &mut crate::keymap::KeysConfig,
+    /// Build the panel's keymap from a table and list it, or say why not.
+    pub listing: fn(&crate::keymap::KeysConfig) -> Result<Vec<crate::keymap::Listed>, String>,
+}
+
+/// Every panel whose keys can be moved, in the order the key map lists them
+/// — the order they appear in the shipped config. The calculator, battery and
+/// network panels are not here: the calculator's keys are the digits and
+/// operators you type, and the other two have no keys.
+pub const KEY_SCOPES: &[KeyScope] = &[
+    KeyScope {
+        widget: "clocks",
+        keys: |config| &config.clocks.keys,
+        keys_mut: |config| &mut config.clocks.keys,
+        listing: |keys| clocks::keymap(keys).map(|map| map.listing()),
+    },
+    KeyScope {
+        widget: "weather",
+        keys: |config| &config.weather.keys,
+        keys_mut: |config| &mut config.weather.keys,
+        listing: |keys| weather::keymap(keys).map(|map| map.listing()),
+    },
+    KeyScope {
+        widget: "todo",
+        keys: |config| &config.todo.keys,
+        keys_mut: |config| &mut config.todo.keys,
+        listing: |keys| todo::keymap(keys).map(|map| map.listing()),
+    },
+    KeyScope {
+        widget: "notes",
+        keys: |config| &config.notes.keys,
+        keys_mut: |config| &mut config.notes.keys,
+        listing: |keys| notes::keymap(keys).map(|map| map.listing()),
+    },
+    KeyScope {
+        widget: "stocks",
+        keys: |config| &config.stocks.keys,
+        keys_mut: |config| &mut config.stocks.keys,
+        listing: |keys| stocks::keymap(keys).map(|map| map.listing()),
+    },
+    KeyScope {
+        widget: "calendar",
+        keys: |config| &config.calendar.keys,
+        keys_mut: |config| &mut config.calendar.keys,
+        listing: |keys| calendar::keymap(keys).map(|map| map.listing()),
+    },
+    KeyScope {
+        widget: "agenda",
+        keys: |config| &config.agenda.keys,
+        keys_mut: |config| &mut config.agenda.keys,
+        listing: |keys| agenda::keymap(keys).map(|map| map.listing()),
+    },
+    KeyScope {
+        widget: "news",
+        keys: |config| &config.news.keys,
+        keys_mut: |config| &mut config.news.keys,
+        listing: |keys| news::keymap(keys).map(|map| map.listing()),
+    },
+    KeyScope {
+        widget: "watchlog",
+        keys: |config| &config.watchlog.keys,
+        keys_mut: |config| &mut config.watchlog.keys,
+        listing: |keys| watchlog::keymap(keys).map(|map| map.listing()),
+    },
+    KeyScope {
+        widget: "pomodoro",
+        keys: |config| &config.pomodoro.keys,
+        keys_mut: |config| &mut config.pomodoro.keys,
+        listing: |keys| pomodoro::keymap(keys).map(|map| map.listing()),
+    },
+    KeyScope {
+        widget: "cpu",
+        keys: |config| &config.cpu.keys,
+        keys_mut: |config| &mut config.cpu.keys,
+        listing: |keys| cpu::keymap(keys).map(|map| map.listing()),
+    },
+    KeyScope {
+        widget: "memory",
+        keys: |config| &config.memory.keys,
+        keys_mut: |config| &mut config.memory.keys,
+        listing: |keys| memory::keymap(keys).map(|map| map.listing()),
+    },
+    KeyScope {
+        widget: "disk",
+        keys: |config| &config.disk.keys,
+        keys_mut: |config| &mut config.disk.keys,
+        listing: |keys| disk::keymap(keys).map(|map| map.listing()),
+    },
+    KeyScope {
+        widget: "temperature",
+        keys: |config| &config.temperature.keys,
+        keys_mut: |config| &mut config.temperature.keys,
+        listing: |keys| temperature::keymap(keys).map(|map| map.listing()),
+    },
+];
+
 /// Whether `name` refers to a widget mirador knows how to build.
 pub fn is_known_widget(name: &str) -> bool {
     WIDGET_NAMES.contains(&name)
@@ -58,7 +163,7 @@ pub fn is_known_widget(name: &str) -> bool {
 /// Returns `Ok(None)` for an unknown name; the config validator rejects those
 /// earlier with a better message, so this is only a defensive fallback.
 pub fn build(name: &str, config: &Config) -> Result<Option<Box<dyn Panel>>> {
-    let panel: Box<dyn Panel> = match name {
+    let mut panel: Box<dyn Panel> = match name {
         "clocks" => Box::new(clocks::ClocksPanel::new(
             config.clocks.clone(),
             crate::config::Config::zones_path()?,
@@ -100,6 +205,9 @@ pub fn build(name: &str, config: &Config) -> Result<Option<Box<dyn Panel>>> {
             Box::new(crate::plugin::PluginPanel::new(plugin.clone()))
         }
     };
+    // Every panel starts on its default keys; this is where the config's
+    // `[<widget>.keys]` reaches it, the same way a reload does.
+    panel.set_keys(config);
     Ok(Some(panel))
 }
 

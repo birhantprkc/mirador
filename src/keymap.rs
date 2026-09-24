@@ -9,9 +9,12 @@
 //! from the map, so a rebound key cannot be advertised under its old name —
 //! invariant 3 made structural rather than kept by hand.
 //!
-//! Only the shell's keys go through it so far. Panels still match their own,
-//! and arrange mode, the pickers and the help overlay keep theirs; each is a
-//! scope of its own to move later, the way this one moved.
+//! Panels move the same way, one at a time: a panel whose keys can be moved
+//! declares its actions as a table of [`Meta`], reads its keys from
+//! `[<widget>.keys]` through a [`PanelKeymap`], and draws its hints from that
+//! — see [`crate::widgets::KEY_SCOPES`] for the ones that have moved so far.
+//! The rest still match their own keys, as do arrange mode, the pickers and
+//! the help overlay; each is a scope of its own to move later.
 //!
 //! Two keys are not in the map at all, and cannot be put there: Ctrl+C, which
 //! always quits (invariant 2), and Esc, which always backs out of whatever is
@@ -98,11 +101,15 @@ impl Key {
     /// The key without its modifiers, as a hint spells it.
     fn code_name(code: KeyCode) -> String {
         match code {
-            KeyCode::Char(' ') => "Space".into(),
+            // Lower case, as the task list always wrote it beside its
+            // capitalised neighbours; `FromStr` reads either.
+            KeyCode::Char(' ') => "space".into(),
             KeyCode::Char(c) => c.to_string(),
             KeyCode::Tab => "Tab".into(),
             KeyCode::BackTab => "Shift+Tab".into(),
-            KeyCode::Enter => "Enter".into(),
+            // Drawn, the way the arrows are: a hint has a small budget, and
+            // `↵` is what the panels always showed.
+            KeyCode::Enter => "↵".into(),
             KeyCode::Esc => "Esc".into(),
             KeyCode::Backspace => "Backspace".into(),
             KeyCode::Delete => "Del".into(),
@@ -194,6 +201,7 @@ impl FromStr for Key {
                 '→' => KeyCode::Right,
                 '↑' => KeyCode::Up,
                 '↓' => KeyCode::Down,
+                '↵' => KeyCode::Enter,
                 c if c.is_control() => {
                     return Err(format!("`{text}` is a control character, not a key"));
                 }
@@ -264,15 +272,38 @@ pub enum Action {
     ResizeShorter,
 }
 
-/// An action's name in `[keys]`, its default keys, and how its hint reads.
-struct Meta {
-    action: Action,
-    name: &'static str,
-    defaults: &'static [(KeyCode, KeyModifiers)],
-    label: &'static str,
-    primary: bool,
+/// An action's name in its key table, its default keys, and how its hint
+/// reads.
+///
+/// Generic over the action so that each scope names its own: [`Action`] for
+/// the shell, and an enum of its own for each panel whose keys can move.
+#[derive(Debug)]
+pub struct Meta<A: 'static> {
+    pub action: A,
+    /// The name written in the key table, as in `quit = "q"`.
+    pub name: &'static str,
+    pub defaults: &'static [(KeyCode, KeyModifiers)],
+    /// What the hint says beside the key.
+    pub label: &'static str,
+    /// Whether the hint is shown without pressing `?`.
+    pub primary: bool,
+    /// Whether this action's hint is drawn joined to the one before it, key
+    /// by key — `↑ / ↓`, `g / G` — rather than on a line of its own. Two
+    /// halves of one idea read as one idea; the labels are joined with ` / `
+    /// where they differ, and shared where they do not.
+    pub joins: bool,
     /// What it does, for the key map dialog, in the imperative.
-    about: &'static str,
+    pub about: &'static str,
+}
+
+impl<A> Meta<A> {
+    /// The keys the action has when its table says nothing about it.
+    pub fn default_keys(&self) -> Vec<Key> {
+        self.defaults
+            .iter()
+            .map(|&(code, modifiers)| Key::new(code, modifiers))
+            .collect()
+    }
 }
 
 /// Every action, in the order their hints appear.
@@ -280,13 +311,14 @@ struct Meta {
 /// The order is the status bar's, and it is deliberate: the bar shows as many
 /// primary hints as fit, left to right, so what comes first is what survives a
 /// narrow terminal.
-const ACTIONS: &[Meta] = &[
+const ACTIONS: &[Meta<Action>] = &[
     Meta {
         action: Action::FocusNext,
         name: "focus_next",
         defaults: &[(KeyCode::Tab, KeyModifiers::NONE)],
         label: "focus",
         primary: true,
+        joins: false,
         about: "move focus to the next panel",
     },
     Meta {
@@ -295,6 +327,7 @@ const ACTIONS: &[Meta] = &[
         defaults: &[(KeyCode::Char('?'), KeyModifiers::NONE)],
         label: "keys",
         primary: true,
+        joins: false,
         about: "show the keys, then the key map",
     },
     Meta {
@@ -303,6 +336,7 @@ const ACTIONS: &[Meta] = &[
         defaults: &[(KeyCode::Char('q'), KeyModifiers::NONE)],
         label: "quit",
         primary: true,
+        joins: false,
         about: "quit mirador",
     },
     // After `quit` deliberately. On a narrow terminal knowing how to get out
@@ -315,6 +349,7 @@ const ACTIONS: &[Meta] = &[
         defaults: &[(KeyCode::Char('w'), KeyModifiers::NONE)],
         label: "panels",
         primary: true,
+        joins: false,
         about: "choose which panels are shown",
     },
     // Last of the single-key primaries, so it is the first to go when the
@@ -327,6 +362,7 @@ const ACTIONS: &[Meta] = &[
         defaults: &[(KeyCode::Char('m'), KeyModifiers::NONE)],
         label: "arrange",
         primary: true,
+        joins: false,
         about: "rearrange the panels",
     },
     // Behind `m` for the same reason `m` is behind `w`, and a primary for the
@@ -338,6 +374,7 @@ const ACTIONS: &[Meta] = &[
         defaults: &[(KeyCode::Char('t'), KeyModifiers::NONE)],
         label: "theme",
         primary: true,
+        joins: false,
         about: "choose a theme",
     },
     // The four resize actions are advertised as one hint when they can be —
@@ -348,6 +385,7 @@ const ACTIONS: &[Meta] = &[
         defaults: &[(KeyCode::Right, KeyModifiers::CONTROL)],
         label: "wider",
         primary: true,
+        joins: false,
         about: "widen the focused panel",
     },
     Meta {
@@ -356,6 +394,7 @@ const ACTIONS: &[Meta] = &[
         defaults: &[(KeyCode::Left, KeyModifiers::CONTROL)],
         label: "narrower",
         primary: true,
+        joins: false,
         about: "narrow the focused panel",
     },
     Meta {
@@ -364,6 +403,7 @@ const ACTIONS: &[Meta] = &[
         defaults: &[(KeyCode::Down, KeyModifiers::CONTROL)],
         label: "taller",
         primary: true,
+        joins: false,
         about: "make the focused panel taller",
     },
     Meta {
@@ -372,6 +412,7 @@ const ACTIONS: &[Meta] = &[
         defaults: &[(KeyCode::Up, KeyModifiers::CONTROL)],
         label: "shorter",
         primary: true,
+        joins: false,
         about: "make the focused panel shorter",
     },
     Meta {
@@ -380,6 +421,7 @@ const ACTIONS: &[Meta] = &[
         defaults: &[(KeyCode::BackTab, KeyModifiers::NONE)],
         label: "focus back",
         primary: false,
+        joins: false,
         about: "move focus to the previous panel",
     },
 ];
@@ -397,7 +439,7 @@ impl Action {
         )
     }
 
-    fn meta(self) -> &'static Meta {
+    fn meta(self) -> &'static Meta<Action> {
         ACTIONS
             .iter()
             .find(|meta| meta.action == self)
@@ -415,11 +457,7 @@ impl Action {
 
     /// The keys the action has when `[keys]` says nothing about it.
     pub fn defaults(self) -> Vec<Key> {
-        self.meta()
-            .defaults
-            .iter()
-            .map(|&(code, modifiers)| Key::new(code, modifiers))
-            .collect()
+        self.meta().default_keys()
     }
 
     /// Every action, in the order the key map dialog lists them: the order
@@ -463,7 +501,7 @@ impl<'de> Deserialize<'de> for KeyList {
             fn visit_str<E: de::Error>(self, text: &str) -> Result<KeyList, E> {
                 text.parse()
                     .map(|key| KeyList(vec![key]))
-                    .map_err(|e| E::custom(format!("in `[keys]`, {e}")))
+                    .map_err(|e| E::custom(format!("in a key table, {e}")))
             }
 
             fn visit_seq<A: SeqAccess<'de>>(self, mut seq: A) -> Result<KeyList, A::Error> {
@@ -471,7 +509,7 @@ impl<'de> Deserialize<'de> for KeyList {
                 while let Some(text) = seq.next_element::<String>()? {
                     keys.push(
                         text.parse()
-                            .map_err(|e| de::Error::custom(format!("in `[keys]`, {e}")))?,
+                            .map_err(|e| de::Error::custom(format!("in a key table, {e}")))?,
                     );
                 }
                 Ok(KeyList(keys))
@@ -486,9 +524,9 @@ impl<'de> Deserialize<'de> for KeyList {
 /// changed. Anything left out keeps its default.
 ///
 /// A map rather than a struct with a field per action, so that an unknown
-/// name can be answered with the list of real ones — and so that the panel
-/// scopes, when they come, are the same shape.
-#[derive(Debug, Clone, Default, Deserialize)]
+/// name can be answered with the list of real ones — and so that a panel's
+/// `[<widget>.keys]` is the same shape.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
 #[serde(transparent)]
 pub struct KeysConfig(pub BTreeMap<String, KeyList>);
 
@@ -529,19 +567,10 @@ impl Keymap {
 
         let mut keys: Vec<(Action, Vec<Key>)> = Vec::with_capacity(ACTIONS.len());
         for meta in ACTIONS {
-            let mut list: Vec<Key> = match config.0.get(meta.name) {
-                Some(KeyList(written)) => written.clone(),
-                None => meta.action.defaults(),
-            };
-            let mut seen = Vec::new();
-            list.retain(|key| {
-                let first = !seen.contains(key);
-                seen.push(*key);
-                first
-            });
-
+            let list = written_or_default(meta, config);
             for key in &list {
-                check_key(meta, *key)?;
+                check_key("keys", meta.name, *key)?;
+                check_resize_key(meta, *key)?;
             }
             for (other, taken) in &keys {
                 if let Some(key) = list.iter().find(|key| taken.contains(key)) {
@@ -686,28 +715,9 @@ impl Default for Keymap {
     }
 }
 
-/// Read `[keys]` from the config at `path` and check it, without touching
-/// anything else in the file.
-///
-/// What the key map dialog's reload runs. Only `[keys]` is read, so a config
-/// that is fine apart from a half-finished edit elsewhere still reloads its
-/// keys — but a file that is not TOML at all is reported, since nothing in it
-/// can be trusted to mean what it appears to.
-pub fn read_keys(path: &Path) -> Result<(KeysConfig, Keymap), String> {
-    #[derive(Deserialize)]
-    struct KeysOnly {
-        #[serde(default)]
-        keys: KeysConfig,
-    }
-    let text = std::fs::read_to_string(path)
-        .map_err(|e| format!("could not read {}: {e}", path.display()))?;
-    let only: KeysOnly = toml::from_str(&text).map_err(|e| e.to_string())?;
-    let keymap = Keymap::new(&only.keys)?;
-    Ok((only.keys, keymap))
-}
-
 /// Put every key back to its default by commenting out the live lines under
-/// `[keys]`, with a line above them saying when and why.
+/// `[keys]` and each panel's `[<widget>.keys]`, with a line above the first
+/// of them saying when and why.
 ///
 /// `None` when there is nothing to comment out. An edit, never a rewrite, for
 /// invariant 16's reason: a round trip through `toml` would throw away every
@@ -716,8 +726,8 @@ pub fn read_keys(path: &Path) -> Result<(KeysConfig, Keymap), String> {
 /// keys back by deleting a `# `, and nothing they wrote is lost.
 ///
 /// Checked the way `layout_edit` checks itself. The result is parsed and
-/// compared with the original: everything outside `[keys]` must come out the
-/// same, and `[keys]` must come out empty. Keys set some other way — an
+/// compared with the original: everything outside the key tables must come
+/// out the same, and every key table must come out empty. Keys set some other way — an
 /// inline `keys = { … }`, a dotted `keys.quit` — fail the second half, and
 /// the file is left alone rather than half reset.
 pub fn reset_text(text: &str, note: &str) -> Result<Option<String>, String> {
@@ -751,14 +761,18 @@ pub fn reset_text(text: &str, note: &str) -> Result<Option<String>, String> {
     }
 
     let refused = "the keys in this config are not all written under a `[keys]` \
-                   heading, so they cannot be reset automatically; comment out \
-                   the lines that set them by hand";
+                   or `[<panel>.keys]` heading, so they cannot be reset \
+                   automatically; comment out the lines that set them by hand";
     let parse = |text: &str| text.parse::<toml::Table>().map_err(|e| e.to_string());
     let mut before = parse(text)?;
     let mut after = parse(&edited).map_err(|_| refused.to_string())?;
-    before.remove("keys");
-    let left = after.remove("keys");
-    if before != after || left.is_some_and(|keys| keys.as_table().is_none_or(|t| !t.is_empty())) {
+    take_key_tables(&mut before);
+    let left = take_key_tables(&mut after);
+    if before != after
+        || left
+            .iter()
+            .any(|keys| keys.as_table().is_none_or(|t| !t.is_empty()))
+    {
         return Err(refused.into());
     }
     Ok(marked.then_some(edited))
@@ -781,15 +795,35 @@ pub fn reset_file(path: &Path) -> Result<bool, String> {
     }
 }
 
-/// Whether a table header line is `[keys]`, allowing the spaces and trailing
-/// comment TOML allows.
+/// Remove every key table from a parsed config — `keys`, and `keys` inside
+/// each panel whose keys can move — and return what was there.
+fn take_key_tables(table: &mut toml::Table) -> Vec<toml::Value> {
+    let mut taken: Vec<toml::Value> = table.remove("keys").into_iter().collect();
+    for scope in crate::widgets::KEY_SCOPES {
+        if let Some(toml::Value::Table(section)) = table.get_mut(scope.widget) {
+            taken.extend(section.remove("keys"));
+        }
+    }
+    taken
+}
+
+/// Whether a table header line is `[keys]` or a panel's `[cpu.keys]`,
+/// allowing the spaces and trailing comment TOML allows.
 fn is_keys_header(trimmed: &str) -> bool {
     trimmed
         .strip_prefix('[')
         .filter(|rest| !rest.starts_with('['))
         .and_then(|rest| rest.split_once(']'))
         .is_some_and(|(name, after)| {
-            name.trim() == "keys" && {
+            let name = name.trim();
+            let named = name == "keys"
+                || name.split_once('.').is_some_and(|(widget, keys)| {
+                    keys.trim() == "keys"
+                        && crate::widgets::KEY_SCOPES
+                            .iter()
+                            .any(|scope| scope.widget == widget.trim())
+                });
+            named && {
                 let after = after.trim_start();
                 after.is_empty() || after.starts_with('#')
             }
@@ -825,31 +859,53 @@ fn bracket_depth_change(line: &str) -> i32 {
     change
 }
 
-/// Refuse a key that `meta`'s action may not have, whoever asked for it.
-fn check_key(meta: &Meta, key: Key) -> Result<(), String> {
-    let name = meta.name;
+/// The keys `meta`'s action has: what its table wrote, or its defaults, with
+/// any key written twice kept once.
+fn written_or_default<A>(meta: &Meta<A>, config: &KeysConfig) -> Vec<Key> {
+    let mut list: Vec<Key> = match config.0.get(meta.name) {
+        Some(KeyList(written)) => written.clone(),
+        None => meta.default_keys(),
+    };
+    let mut seen = Vec::new();
+    list.retain(|key| {
+        let first = !seen.contains(key);
+        seen.push(*key);
+        first
+    });
+    list
+}
+
+/// Refuse a key that no action in any table may have, whoever asked for it.
+/// `scope` is the table's name as written, `keys` or `cpu.keys`.
+fn check_key(scope: &str, name: &str, key: Key) -> Result<(), String> {
     if key.is_ctrl_c() {
         return Err(format!(
-            "`{name}` cannot be Ctrl+C in `[keys]`: Ctrl+C always quits, whatever \
+            "`{name}` cannot be Ctrl+C in `[{scope}]`: Ctrl+C always quits, whatever \
              else is bound, so that there is always a way out."
         ));
     }
     if key.code == KeyCode::Esc {
         return Err(format!(
-            "`{name}` cannot use Esc in `[keys]`: Esc always backs out of whatever \
+            "`{name}` cannot use Esc in `[{scope}]`: Esc always backs out of whatever \
              is open, and is not in the keymap."
         ));
     }
     if key.modifiers.is_empty() && matches!(key.code, KeyCode::Char('1'..='9')) {
         return Err(format!(
-            "`{name}` cannot be `{key}` in `[keys]`: 1-9 jump straight to a panel."
+            "`{name}` cannot be `{key}` in `[{scope}]`: 1-9 jump straight to a panel."
         ));
     }
+    Ok(())
+}
+
+/// Refuse a resize key with neither Ctrl nor Alt held.
+fn check_resize_key(meta: &Meta<Action>, key: Key) -> Result<(), String> {
     if meta.action.is_resize()
         && !key
             .modifiers
             .intersects(KeyModifiers::CONTROL | KeyModifiers::ALT)
     {
+        let name = meta.name;
         return Err(format!(
             "`{name}` is `{key}` in `[keys]`, and a resize key needs Ctrl or Alt \
              held, as in \"alt+right\": resizing is read before the focused panel sees the \
@@ -857,6 +913,367 @@ fn check_key(meta: &Meta, key: Key) -> Result<(), String> {
         ));
     }
     Ok(())
+}
+
+/// The hints for a scope's keys: each action's first key where its label
+/// says, then every further key as an alias the help overlay lists — with an
+/// action that [`Meta::joins`] the one before it drawn on the same hints,
+/// key by key.
+fn hints<A: 'static>(entries: &[(&Meta<A>, &[Key])]) -> (Vec<Binding>, Vec<Binding>) {
+    let mut bindings = Vec::new();
+    let mut aliases = Vec::new();
+    let mut index = 0;
+    while index < entries.len() {
+        let (meta, keys) = entries[index];
+        let joined = entries.get(index + 1).filter(|(next, _)| next.joins);
+        let (next, next_keys): (Option<&Meta<A>>, &[Key]) =
+            joined.map_or((None, &[]), |(next, keys)| (Some(*next), *keys));
+        let label = match next {
+            Some(next) if next.label != meta.label => format!("{} / {}", meta.label, next.label),
+            _ => meta.label.to_string(),
+        };
+        for position in 0..keys.len().max(next_keys.len()) {
+            let binding = match (keys.get(position), next_keys.get(position), next) {
+                (Some(key), Some(other), _) => Binding::owned(
+                    joined_keys(*key, *other),
+                    label.clone(),
+                    meta.primary && position == 0,
+                ),
+                (Some(key), None, _) => {
+                    Binding::owned(key.to_string(), meta.label, meta.primary && position == 0)
+                }
+                (None, Some(other), Some(next)) => {
+                    Binding::owned(other.to_string(), next.label, next.primary && position == 0)
+                }
+                (None, _, _) => continue,
+            };
+            if position == 0 {
+                bindings.push(binding);
+            } else {
+                aliases.push(binding);
+            }
+        }
+        index += if next.is_some() { 2 } else { 1 };
+    }
+    (bindings, aliases)
+}
+
+/// Two keys on one hint: `g / G`, and `Shift+↑↓` rather than
+/// `Shift+↑ / Shift+↓` for two arrows under the same modifiers — the form the
+/// resize hint takes, and six cells a border cannot spare. Bare arrows keep
+/// their `↑ / ↓`, which is how every list in mirador has always drawn them.
+fn joined_keys(key: Key, other: Key) -> String {
+    let arrow = |code| {
+        matches!(
+            code,
+            KeyCode::Up | KeyCode::Down | KeyCode::Left | KeyCode::Right
+        )
+    };
+    if key.modifiers == other.modifiers
+        && !key.modifiers.is_empty()
+        && arrow(key.code)
+        && arrow(other.code)
+    {
+        format!(
+            "{}{}{}",
+            Key::modifier_prefix(key.modifiers),
+            Key::code_name(key.code),
+            Key::code_name(other.code)
+        )
+    } else {
+        format!("{key} / {other}")
+    }
+}
+
+/// One action as the key map dialog lists it, whatever scope it is in.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Listed {
+    pub name: &'static str,
+    pub keys: Vec<Key>,
+    pub defaults: Vec<Key>,
+    pub about: &'static str,
+}
+
+impl Listed {
+    pub fn is_default(&self) -> bool {
+        self.keys == self.defaults
+    }
+}
+
+/// Every panel's keys as the key map lists them, by widget name.
+pub type PanelListing = Vec<(&'static str, Vec<Listed>)>;
+
+/// One panel's keys: its defaults, with `[<widget>.keys]` laid over them.
+///
+/// The same rules as the shell's [`Keymap`], less the one only resizing
+/// needs: an unknown action is answered with the real ones, Ctrl+C, Esc and
+/// `1`–`9` are refused, and one key may not do two things in one panel.
+///
+/// A panel key may be one the shell also uses — the calendar's `t` has always
+/// been `today` there and `theme` everywhere else — because the focused panel
+/// is offered every key first, and that is the rule the shipped config
+/// states. The one exception is refused, in [`KeyTables::check`]: a resize
+/// key, which the shell reads *before* the panel, so a panel key there could
+/// never arrive.
+#[derive(Debug, Clone)]
+pub struct PanelKeymap<A: 'static> {
+    actions: &'static [Meta<A>],
+    /// Each action's keys, in the order of `actions`.
+    keys: Vec<Vec<Key>>,
+    bindings: Vec<Binding>,
+}
+
+impl<A: Copy + PartialEq> PanelKeymap<A> {
+    /// Lay `config` over the defaults in `actions`, for the panel `widget`.
+    pub fn new(
+        widget: &str,
+        actions: &'static [Meta<A>],
+        config: &KeysConfig,
+    ) -> Result<Self, String> {
+        let scope = format!("{widget}.keys");
+        for name in config.0.keys() {
+            if !actions.iter().any(|meta| meta.name == name) {
+                let names: Vec<&str> = actions.iter().map(|meta| meta.name).collect();
+                return Err(format!(
+                    "`[{scope}]` has no action `{name}`. The actions are: {}.",
+                    names.join(", ")
+                ));
+            }
+        }
+
+        let mut keys: Vec<Vec<Key>> = Vec::with_capacity(actions.len());
+        for meta in actions {
+            let list = written_or_default(meta, config);
+            for key in &list {
+                check_key(&scope, meta.name, *key)?;
+            }
+            for (other, taken) in actions.iter().zip(&keys) {
+                if let Some(key) = list.iter().find(|key| taken.contains(key)) {
+                    return Err(format!(
+                        "`{key}` is bound to both `{}` and `{}` in `[{scope}]`. Give one \
+                         of them another key, or unbind it with `{} = []`.",
+                        other.name,
+                        meta.name,
+                        if config.0.contains_key(meta.name) {
+                            other.name
+                        } else {
+                            meta.name
+                        },
+                    ));
+                }
+            }
+            keys.push(list);
+        }
+
+        let entries: Vec<(&Meta<A>, &[Key])> =
+            actions.iter().zip(keys.iter().map(Vec::as_slice)).collect();
+        let (mut bindings, aliases) = hints(&entries);
+        bindings.extend(aliases);
+        Ok(Self {
+            actions,
+            keys,
+            bindings,
+        })
+    }
+
+    /// Every action at its default keys.
+    pub fn defaults(widget: &str, actions: &'static [Meta<A>]) -> Self {
+        Self::new(widget, actions, &KeysConfig::default())
+            .expect("a panel's default keys are valid")
+    }
+
+    /// What a panel builds itself with. A table that does not check out
+    /// never gets this far — [`crate::config::Config::validate`] refuses it
+    /// at load, and a reload keeps the keys in force — so the defaults here
+    /// are a guard, not a path anything takes.
+    pub fn or_defaults(widget: &str, actions: &'static [Meta<A>], config: &KeysConfig) -> Self {
+        Self::new(widget, actions, config).unwrap_or_else(|_| Self::defaults(widget, actions))
+    }
+
+    /// The action `key` is bound to, if any.
+    pub fn action(&self, key: impl Into<Key>) -> Option<A> {
+        let key = key.into();
+        self.actions
+            .iter()
+            .zip(&self.keys)
+            .find(|(_, keys)| keys.contains(&key))
+            .map(|(meta, _)| meta.action)
+    }
+
+    /// The same map with hints for keys that are not in it appended — a
+    /// key the panel reads that no table can move, such as Esc.
+    #[must_use]
+    pub fn with_fixed(mut self, fixed: &[Binding]) -> Self {
+        self.bindings.extend_from_slice(fixed);
+        self
+    }
+
+    /// The panel's hints, for its border, the status bar and the help
+    /// overlay.
+    pub fn bindings(&self) -> &[Binding] {
+        &self.bindings
+    }
+
+    /// Every action, for the key map dialog.
+    pub fn listing(&self) -> Vec<Listed> {
+        self.actions
+            .iter()
+            .zip(&self.keys)
+            .map(|(meta, keys)| Listed {
+                name: meta.name,
+                keys: keys.clone(),
+                defaults: meta.default_keys(),
+                about: meta.about,
+            })
+            .collect()
+    }
+}
+
+/// Every key table in a config: `[keys]` for the shell, and a
+/// `[<widget>.keys]` for each panel in [`crate::widgets::KEY_SCOPES`].
+#[derive(Debug, Clone, Default)]
+pub struct KeyTables {
+    pub shell: KeysConfig,
+    /// By widget name. A panel with no table here has its default keys.
+    pub panels: BTreeMap<&'static str, KeysConfig>,
+}
+
+impl KeyTables {
+    /// The tables a loaded config holds.
+    pub fn from_config(config: &crate::config::Config) -> Self {
+        Self {
+            shell: config.keys.clone(),
+            panels: crate::widgets::KEY_SCOPES
+                .iter()
+                .map(|scope| (scope.widget, (scope.keys)(config).clone()))
+                .collect(),
+        }
+    }
+
+    /// Check every table, returning the shell's keymap and each panel's
+    /// listing when they all hold.
+    pub fn check(&self) -> Result<(Keymap, PanelListing), String> {
+        let shell = Keymap::new(&self.shell)?;
+        let resize: Vec<(Key, Action)> = Action::LISTED
+            .into_iter()
+            .filter(|action| action.is_resize())
+            .flat_map(|action| shell.keys(action).iter().map(move |key| (*key, action)))
+            .collect();
+        let empty = KeysConfig::default();
+        let mut panels = Vec::new();
+        for scope in crate::widgets::KEY_SCOPES {
+            let listing = (scope.listing)(self.panels.get(scope.widget).unwrap_or(&empty))?;
+            for entry in &listing {
+                if let Some((key, action)) = resize.iter().find(|(key, _)| entry.keys.contains(key))
+                {
+                    return Err(format!(
+                        "`{}` is `{key}` in `[{}.keys]`, which is `{}` in `[keys]`. \
+                         Resizing is read before the focused panel sees a key, so \
+                         the panel would never get it; give one of them another key.",
+                        entry.name,
+                        scope.widget,
+                        action.name(),
+                    ));
+                }
+            }
+            panels.push((scope.widget, listing));
+        }
+        Ok((shell, panels))
+    }
+
+    /// Put these tables into `config`, in place of the ones it had.
+    pub fn apply(self, config: &mut crate::config::Config) {
+        let Self { shell, mut panels } = self;
+        config.keys = shell;
+        for scope in crate::widgets::KEY_SCOPES {
+            *(scope.keys_mut)(config) = panels.remove(scope.widget).unwrap_or_default();
+        }
+    }
+}
+
+/// Read every key table from the config at `path` and check them, without
+/// touching anything else in the file.
+///
+/// What the key map dialog's reload runs. Only the key tables are read, so a
+/// config that is fine apart from a half-finished edit elsewhere still
+/// reloads its keys — but a file that is not TOML at all is reported, since
+/// nothing in it can be trusted to mean what it appears to.
+pub fn read_keys(path: &Path) -> Result<(KeyTables, Keymap), String> {
+    #[derive(Deserialize)]
+    struct KeysOnly {
+        #[serde(default)]
+        keys: KeysConfig,
+    }
+    let text = std::fs::read_to_string(path)
+        .map_err(|e| format!("could not read {}: {e}", path.display()))?;
+    let mut table: toml::Table = text.parse().map_err(|e: toml::de::Error| e.to_string())?;
+    let shell = table
+        .remove("keys")
+        .map(toml::Value::try_into::<KeysConfig>)
+        .transpose()
+        .map_err(|e| format!("in `[keys]`: {e}"))?
+        .unwrap_or_default();
+    let mut tables = KeyTables {
+        shell,
+        panels: BTreeMap::new(),
+    };
+    for scope in crate::widgets::KEY_SCOPES {
+        if let Some(section) = table.remove(scope.widget) {
+            // The panel's other settings are ignored here, as the rest of
+            // the file is.
+            let only: KeysOnly = section
+                .try_into()
+                .map_err(|e| format!("in `[{}.keys]`: {e}", scope.widget))?;
+            tables.panels.insert(scope.widget, only.keys);
+        }
+    }
+    let (keymap, _) = tables.check()?;
+    Ok((tables, keymap))
+}
+
+/// Whether `bindings` advertise `key`, alone, as one half of a joined pair
+/// (`g / G`), or inside a compacted arrow pair (`Shift+↑↓`).
+#[cfg(test)]
+fn advertises(bindings: &[Binding], key: Key) -> bool {
+    let text = key.to_string();
+    let prefix = Key::modifier_prefix(key.modifiers);
+    let glyph = Key::code_name(key.code);
+    bindings.iter().any(|binding| {
+        binding.key == text
+            || binding.key.split(" / ").any(|half| half == text)
+            || (!prefix.is_empty()
+                && binding.key.starts_with(&prefix)
+                && binding.key[prefix.len()..].contains(&glyph))
+    })
+}
+
+/// Every key in `map` works and is advertised: `press` is handed each key of
+/// each action in turn — build a fresh panel inside it — and must consume it,
+/// and the map's own hints must name it. The panel-side half of what the
+/// hints being derived guarantees: a key the map sends is a key the panel
+/// answers.
+#[cfg(test)]
+pub(crate) fn assert_every_key_works<A: Copy + PartialEq>(
+    map: &PanelKeymap<A>,
+    mut press: impl FnMut(KeyEvent) -> crate::panel::KeyOutcome,
+) {
+    for (meta, keys) in map.actions.iter().zip(&map.keys) {
+        assert!(!keys.is_empty(), "`{}` has no default key", meta.name);
+        for key in keys {
+            assert!(
+                advertises(map.bindings(), *key),
+                "`{key}` ({}) is handled but not advertised: {:?}",
+                meta.name,
+                map.bindings()
+            );
+            assert_eq!(
+                press(KeyEvent::new(key.code, key.modifiers)),
+                crate::panel::KeyOutcome::Consumed,
+                "`{key}` ({}) is in the map but the panel ignores it",
+                meta.name
+            );
+        }
+    }
 }
 
 #[cfg(test)]
@@ -1287,7 +1704,7 @@ mod tests {
         assert!(!before.is_default(Action::Quit));
         assert_eq!(reset_file(&path), Ok(true));
         let (keys, after) = read_keys(&path).expect("reads");
-        assert!(keys.0.is_empty(), "{keys:?}");
+        assert!(keys.shell.0.is_empty(), "{keys:?}");
         assert!(Action::LISTED.iter().all(|a| after.is_default(*a)));
         assert_eq!(
             reset_file(&path),
@@ -1329,13 +1746,202 @@ mod tests {
             error.contains("line 3") && error.contains("does not pass"),
             "{error}"
         );
-        // `main` appends `--reset-keys` to any startup error naming `[keys]`,
-        // so every way a keymap can fail has to name it — a single key and a
-        // list alike.
-        assert!(error.contains("[keys]"), "{error}");
+        // `main` appends `--reset-keys` to any startup error that says it
+        // came from a key table, so every way a keymap can fail has to say
+        // so — a single key and a list alike. The reader cannot know which
+        // table it is in, `[keys]` or a panel's, so it names neither; the
+        // line TOML quotes above it does.
+        assert!(error.contains("in a key table"), "{error}");
         let listed = toml::from_str::<BTreeMap<String, KeysConfig>>("[keys]\nquit = [\"cmd+q\"]\n")
             .expect_err("in a list too")
             .to_string();
-        assert!(listed.contains("[keys]"), "{listed}");
+        assert!(listed.contains("in a key table"), "{listed}");
+    }
+
+    fn cpu(toml_text: &str) -> Result<PanelKeymap<crate::widgets::cpu::CpuAction>, String> {
+        crate::widgets::cpu::keymap(&toml::from_str(toml_text).expect("a table"))
+    }
+
+    /// A panel key moves, the old key stops working, and the border says
+    /// the new one — the hint is derived, so it cannot say the old key.
+    #[test]
+    fn a_panel_key_moves_and_its_hint_follows() {
+        use crate::widgets::cpu::CpuAction;
+        let map = cpu("per_core = \"p\"").expect("valid");
+        assert_eq!(map.action(key("p")), Some(CpuAction::PerCore));
+        assert_eq!(map.action(key("c")), None);
+        assert_eq!(map.bindings(), &[Binding::owned("p", "per-core", true)]);
+
+        let both = cpu("per_core = [\"p\", \"c\"]").expect("valid");
+        assert_eq!(both.action(key("c")), Some(CpuAction::PerCore));
+        assert_eq!(
+            both.bindings(),
+            &[
+                Binding::owned("p", "per-core", true),
+                Binding::owned("c", "per-core", false)
+            ],
+            "the first key is the hint and the second an alias"
+        );
+
+        let none = cpu("per_core = []").expect("valid");
+        assert_eq!(none.action(key("c")), None);
+        assert!(
+            none.bindings().is_empty(),
+            "an unbound key is not advertised"
+        );
+    }
+
+    #[test]
+    fn a_panel_table_is_held_to_the_shells_rules_and_named_in_the_refusal() {
+        let unknown = cpu("percore = \"p\"").expect_err("misspelled");
+        assert!(
+            unknown.contains("[cpu.keys]") && unknown.contains("per_core"),
+            "{unknown}"
+        );
+        for (written, why) in [
+            ("\"ctrl+c\"", "Ctrl+C"),
+            ("\"esc\"", "Esc"),
+            ("\"3\"", "1-9"),
+        ] {
+            let error = cpu(&format!("per_core = {written}")).expect_err(written);
+            assert!(
+                error.contains(why) && error.contains("[cpu.keys]"),
+                "{written}: {error}"
+            );
+        }
+    }
+
+    /// A panel key the shell also uses is the panel's while it is focused —
+    /// the calendar's `t` always was — but a resize key never reaches a
+    /// panel, so a panel key there is refused rather than left dead.
+    #[test]
+    fn a_panel_key_may_share_a_shell_key_but_not_a_resize_key() {
+        let tables = |shell: &str, panel: &str| KeyTables {
+            shell: keys_config(&format!("[keys]\n{shell}")),
+            panels: [("cpu", toml::from_str(panel).expect("a table"))].into(),
+        };
+        assert!(tables("", "per_core = \"t\"").check().is_ok());
+        let error = tables("", "per_core = \"ctrl+right\"")
+            .check()
+            .expect_err("resize reads it first");
+        assert!(
+            error.contains("[cpu.keys]") && error.contains("resize_wider"),
+            "{error}"
+        );
+        assert!(
+            tables("resize_wider = \"alt+right\"", "per_core = \"ctrl+right\"")
+                .check()
+                .is_ok(),
+            "once resize has moved, the key is free"
+        );
+    }
+
+    #[test]
+    fn every_panel_scope_is_a_widget_listed_once_with_valid_defaults() {
+        for scope in crate::widgets::KEY_SCOPES {
+            assert!(
+                crate::widgets::is_known_widget(scope.widget),
+                "{}",
+                scope.widget
+            );
+            assert_eq!(
+                crate::widgets::KEY_SCOPES
+                    .iter()
+                    .filter(|other| other.widget == scope.widget)
+                    .count(),
+                1,
+                "{}",
+                scope.widget
+            );
+            let listing = (scope.listing)(&KeysConfig::default()).expect("defaults are valid");
+            assert!(!listing.is_empty(), "{} has no keys to move", scope.widget);
+            assert!(listing.iter().all(Listed::is_default));
+        }
+        let (_, panels) = KeyTables::default()
+            .check()
+            .expect("the defaults check out");
+        assert_eq!(panels.len(), crate::widgets::KEY_SCOPES.len());
+    }
+
+    /// Each panel's table in the shipped config lists every action with its
+    /// default — the same promise as `[keys]`, per panel.
+    #[test]
+    fn the_shipped_config_documents_every_panel_default_exactly() {
+        let shipped = crate::config::DEFAULT_CONFIG.replace("\r\n", "\n");
+        for scope in crate::widgets::KEY_SCOPES {
+            let heading = format!("\n[{}.keys]\n", scope.widget);
+            let block = shipped
+                .split_once(&heading)
+                .unwrap_or_else(|| panic!("the shipped config has no {}", heading.trim()))
+                .1;
+            let uncommented = block
+                .lines()
+                // The commented lines directly under the heading, and no
+                // further: the next section opens with prose of its own.
+                .map_while(|line| line.strip_prefix("# "))
+                .filter(|line| !line.starts_with(' ') && line.contains('='))
+                .collect::<Vec<_>>()
+                .join("\n");
+            let written: KeysConfig = toml::from_str(&uncommented).expect("valid TOML");
+            let documented = (scope.listing)(&written).expect("the documented keys are valid");
+            let defaults = (scope.listing)(&KeysConfig::default()).expect("valid");
+            assert_eq!(
+                written.0.len(),
+                defaults.len(),
+                "[{}.keys] lists every action once: {:?}",
+                scope.widget,
+                written.0.keys().collect::<Vec<_>>()
+            );
+            assert_eq!(documented, defaults, "{}", scope.widget);
+        }
+    }
+
+    /// The reset reaches a panel's table too, and leaves the rest of that
+    /// panel's section exactly as it was.
+    #[test]
+    fn a_reset_comments_out_a_panels_keys_and_keeps_its_settings() {
+        let text = "[cpu]\nhistory = 5   # mine\n\n[cpu.keys]\nper_core = \"p\"\n\n\
+                    [memory]\nshow_swap = false\n";
+        let edited = reset_text(text, NOTE).expect("resets").expect("changed");
+        assert_eq!(
+            edited,
+            format!(
+                "[cpu]\nhistory = 5   # mine\n\n[cpu.keys]\n# {NOTE}\n# per_core = \"p\"\n\n\
+                 [memory]\nshow_swap = false\n"
+            )
+        );
+        // Written inline under the panel's own heading, the keys cannot be
+        // commented out without the settings beside them.
+        let inline = "[cpu]\nhistory = 5\nkeys = { per_core = \"p\" }\n";
+        assert!(
+            reset_text(inline, NOTE)
+                .expect_err(inline)
+                .contains("by hand")
+        );
+        // A table that is not a panel's keys is not touched.
+        let other = "[general.keys]\nx = 1\n";
+        assert_eq!(reset_text(other, NOTE), Ok(None));
+    }
+
+    /// Reload reads a panel's table and nothing else in its section, so a
+    /// panel setting is not held to the key rules and a key error is.
+    #[test]
+    fn a_reload_reads_panel_tables_and_reports_them_by_name() {
+        let dir = std::env::temp_dir().join(format!("mirador-panel-keys-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).expect("dir");
+        let path = dir.join("config.toml");
+        std::fs::write(
+            &path,
+            "[cpu]\nhistory = 5\n[cpu.keys]\nper_core = \"p\"\n[disk]\nshow_io = false\n",
+        )
+        .expect("write");
+        let (tables, _) = read_keys(&path).expect("reads");
+        assert_eq!(tables.panels["cpu"].0.len(), 1);
+        assert!(tables.panels["disk"].0.is_empty(), "no table, no keys");
+
+        std::fs::write(&path, "[cpu.keys]\nper_core = \"esc\"\n").expect("write");
+        let error = read_keys(&path).expect_err("Esc is never a key");
+        assert!(error.contains("[cpu.keys]"), "{error}");
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

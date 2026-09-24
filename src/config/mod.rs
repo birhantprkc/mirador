@@ -50,7 +50,7 @@ pub use plugins::PluginConfig;
 pub use widgets::{
     AgendaConfig, BatteryConfig, CalculatorConfig, CalendarConfig, ClockZone, ClocksConfig,
     CpuConfig, DiskConfig, MemoryConfig, NetworkConfig, NewsConfig, NewsFeed, NotesConfig,
-    PomodoroConfig, StocksConfig, TemperatureConfig, TodoConfig, WeatherConfig,
+    PomodoroConfig, StocksConfig, TemperatureConfig, TodoConfig, WatchlogConfig, WeatherConfig,
 };
 
 /// Top-level configuration.
@@ -78,6 +78,7 @@ pub struct Config {
     pub agenda: AgendaConfig,
     pub calendar: CalendarConfig,
     pub news: NewsConfig,
+    pub watchlog: WatchlogConfig,
     pub pomodoro: PomodoroConfig,
     pub calculator: CalculatorConfig,
     pub cpu: CpuConfig,
@@ -261,7 +262,9 @@ impl Config {
     /// however mangled, can produce a config that would have been rejected had
     /// it come from the file.
     pub(crate) fn validate(&self) -> Result<()> {
-        crate::keymap::Keymap::new(&self.keys).map_err(anyhow::Error::msg)?;
+        crate::keymap::KeyTables::from_config(self)
+            .check()
+            .map_err(anyhow::Error::msg)?;
 
         let mut plugin_ids = std::collections::HashSet::new();
         for plugin in &self.plugins {

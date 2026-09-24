@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Every panel's own keys can be changed** (#284). Each panel reads its
+  keys from a table under its own section — `[todo.keys] delete = "x"`,
+  `[calendar.keys] today = "."` — and its border, the status bar and the help
+  overlay show the keys you chose. What moves is what a panel does while you
+  look at it; forms, editors, search boxes and dialogs keep their keys, since
+  they take typing, and `Esc` still backs out of each. The calculator has no
+  table, its keys being what you type. The same rules as `[keys]` apply, and a
+  panel key may be one the dashboard also uses, winning while that panel is
+  focused, but not a resize key, which the panel would never see.
+- **The watch log has a `[watchlog]` section**, holding only its keys.
+- **The key map lists them**, each panel under the heading of the table its
+  keys are written in. `r` reloads the panel tables along with `[keys]`,
+  handing the new keys to panels already on screen, and `d` and
+  `mirador --reset-keys` reset them too.
+
+### Changed
+
+- **`Enter` is drawn `↵` wherever a key is named**, as the panels' borders
+  always drew it, and a config may write it either way.
+- **Paired keys are drawn the same way in every panel**, following their
+  actions' order: `↑ / ↓` and `k / j`, `n / p` for the calendar's months and
+  `+ / -` for the pomodoro's length. Keys the panels read and the help
+  overlay never mentioned — the calendar's `h`/`l`, the agenda's and watch
+  log's `PageUp`/`PageDown`, `Home`/`End` in the watch log — are listed now.
+
+### Fixed
+
+- **The Mac advice for moving resize off Ctrl was wrong for Terminal.** It
+  said letters with Alt work in every terminal and implied Option+arrows
+  might. Measured on both: iTerm2 sends Option+arrows as Alt+arrows as they
+  are; Terminal sends none intact, needs "Use Option as Meta key" for
+  `alt+h`/`j`/`k`/`l`, and with it turns Option+↑/↓ into an `Esc` and two
+  typed characters. The README and the shipped config now say so.
+- The README said `PageUp` and `PageDown` move the task list a screen at a
+  time; they move it ten rows, as the help overlay says.
+
 ## [1.17.0] - 2026-09-24
 
 ### Added

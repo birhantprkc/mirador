@@ -407,7 +407,9 @@ it turns "glance at the dashboard" into "operate the dashboard". `/` searches
 bodies as well as titles, because the title you wrote in a hurry is often not
 what you later search for.
 
-Open a note with `Enter`, then move to its body with `Tab`. `Shift` plus the
+The list's keys can be moved in `[notes.keys]` — see
+[Changing a panel's keys](#changing-a-panels-keys). Open a note with `Enter`,
+then move to its body with `Tab`. `Shift` plus the
 arrow keys (or `Home`/`End`) selects text, and `Ctrl+A` selects the whole body.
 `Ctrl+C` sends that selection to the terminal clipboard and also keeps an
 in-Mirador copy; `Ctrl+V` pastes that copy at the cursor or replaces the next
@@ -467,7 +469,7 @@ either, because a clock panel with nothing to draw large is not a clock panel.
 │ 12 13 14 15 16 17 18          │
 │ 19 20 21 22 23 24 25          │
 │ 26 27 28 29 30 31             │
-╰───── n/p month · t today ─────╯
+╰──── n / p month · t today ────╯
 ```
 
 The calendar is deliberately offline — it reads no mail server and no account.
@@ -684,6 +686,9 @@ A focus timer, in the same block numerals the clock uses.
 | `r` | Put the current phase back to full |
 | `+` / `-` | Lengthen or shorten the phase you are in, by a minute |
 
+Each of these can be moved in `[pomodoro.keys]` — see
+[Changing a panel's keys](#changing-a-panels-keys).
+
 Focus intervals are brass and breaks are moss, and the phase is spelled out
 above the numerals as well — colour alone is a bad way to tell someone whether
 they are meant to be working. A paused timer goes grey rather than blinking:
@@ -858,7 +863,7 @@ Every flag is optional; with none of them mirador opens the dashboard.
 | `--print-config` | Print the default config to stdout and exit |
 | `--migrate-config` | Update a config written by an older version |
 | `--reset-config` | Replace the config with the defaults, keeping a copy |
-| `--reset-keys` | Put every key back to its default by commenting out `[keys]` |
+| `--reset-keys` | Put every key back to its default by commenting out `[keys]` and the panels' key tables |
 | `--factory-reset` | Start over: config, preferences, tasks, notes and watchlist all set aside |
 | `--update` | Update through the installer or Cargo and exit |
 | `-y`, `--yes` | Do not ask for confirmation |
@@ -874,8 +879,8 @@ Neither reset deletes anything. Every file they touch is renamed to a numbered
 They are also separate commands rather than degrees of one: `--reset-config` is
 about configuration, `--factory-reset` about everything mirador has written.
 `--reset-keys` is narrower than either: it comments out the lines under
-`[keys]` in the config and changes nothing else, for a keymap mistake that
-stops mirador starting.
+`[keys]` and the panels' own key tables in the config and changes nothing
+else, for a keymap mistake that stops mirador starting.
 
 ## Keys
 
@@ -898,7 +903,8 @@ the ones you want and leave the rest:
 
 ```toml
 [keys]
-# Ctrl+arrows switch desktops on a Mac, so resize with Option instead.
+# Ctrl+arrows switch desktops on a Mac. Option+arrows, as iTerm2 sends them;
+# Terminal needs letters instead — see below.
 resize_wider    = "alt+right"
 resize_narrower = "alt+left"
 resize_taller   = "alt+down"
@@ -909,30 +915,86 @@ theme           = []           # or none at all
 
 Keys are written in words — `q`, `?`, `tab`, `shift+tab`, `space`, `f5`,
 `ctrl+left`, `alt+h` — and the status bar, the help overlay and the arrange
-legend all show the keys you chose rather than the defaults. On a Mac, Option
-works as Alt once the terminal sends it that way ("Use Option as Meta key" in
-Terminal, "Esc+" in iTerm2); terminals differ in what Option with an arrow
-sends, and `alt+h`/`j`/`k`/`l` work in all of them.
+legend all show the keys you chose rather than the defaults.
+
+On a Mac, what arrives depends on the terminal, and these were measured
+rather than assumed:
+
+- **iTerm2** passes Option+arrows through as Alt+arrows unchanged, so the
+  example above works as it is. Ctrl+Shift+arrows and Ctrl+Option+arrows
+  arrive intact too. Option with a *letter* types a symbol unless the Left
+  Option key is set to "Esc+".
+- **Terminal** passes no Option, Ctrl+Shift or Ctrl+Option arrow through
+  intact. Turn on "Use Option as Meta key" and use letters —
+  `alt+h`/`j`/`k`/`l` — which then arrive as Alt+letters. Do not use
+  Option+`↑`/`↓` there: with that setting Terminal sends each as `Esc`
+  followed by two characters, so the `Esc` backs out of whatever is open and
+  the characters are typed into the focused panel.
 
 A few rules keep a keymap from locking you out. `Ctrl+C` always quits and
 `Esc` always backs out of whatever is open, so neither can be bound. The resize
 keys are read before the focused panel sees them, so each needs `Ctrl` or `Alt`
 held. Every other key is offered to the focused panel first, the way `q` is
 today. And a key given to two actions is refused at startup, naming the line to
-change. The panels' own keys are not configurable yet.
+change.
+
+### Changing a panel's keys
+
+Every panel's own keys move the same way, in a table under the panel's
+section. The shipped config lists every action in each table with its
+default, and the key map below shows them too:
+
+| Table | Actions |
+| --- | --- |
+| `[clocks.keys]` | `seconds` `add` `edit` `move_up` `move_down` `twelve_hour` `remove` `up` `down` `show_path` |
+| `[weather.keys]` | `refresh` `units` `location` |
+| `[todo.keys]` | `add` `edit` `done` `delete` `up` `down` `first` `last` `page_up` `page_down` `priority_next` `priority_previous` `sort` `completed` `filter` `show_path` |
+| `[notes.keys]` | `new` `edit` `delete` `up` `down` `first` `last` `scroll_up` `scroll_down` `search` `show_path` |
+| `[stocks.keys]` | `add` `remove` `refresh` `up` `down` `first` `last` `show_path` |
+| `[calendar.keys]` | `next_month` `previous_month` `today` `previous_year` `next_year` |
+| `[agenda.keys]` | `file` `reload` `up` `down` `first` `last` `page_up` `page_down` `show_path` |
+| `[news.keys]` | `show_link` `copy` `open` `refresh` `up` `down` |
+| `[watchlog.keys]` | `up` `down` `first` `last` `page_up` `page_down` |
+| `[pomodoro.keys]` | `toggle` `next` `longer` `shorter` `reset` |
+| `[cpu.keys]` | `per_core` |
+| `[memory.keys]` | `swap` |
+| `[disk.keys]` | `io` |
+| `[temperature.keys]` | `units` |
+
+```toml
+[todo.keys]
+delete = "x"
+up     = ["up", "k", "i"]   # a list gives an action several keys
+
+[calendar.keys]
+today = "."                 # keep t for the theme picker
+```
+
+What moves is what a panel does while you are looking at it. A form, an
+editor, a search box, a dialog or a delete question keeps its own keys,
+because it takes typing and a key moved there could never be typed; `Esc`
+still backs out of each and clears a filter or a search. The calculator has
+no table for the same reason: its keys are the digits and operators you type.
+
+The same rules hold, with one difference. A panel key may be one the
+dashboard also uses — it wins while that panel is focused, the way the
+calendar's `t` means "today" there and "theme" everywhere else — but not a
+resize key, which is read before the panel would see it. The panel's border
+and the help overlay show the keys you chose.
 
 **Press `?` twice** for the key map: every one of these actions with the key it
-has now, its default, and what it does, with the keys you changed picked out.
+has now, its default, and what it does, with the keys you changed picked out,
+followed by each panel's table under its heading.
 It also says which file to edit, and it has three keys of its own:
 
-- `r` reloads `[keys]`, so you can edit the config in another pane and try the
-  result without restarting. A mistake is shown in the dialog and the keys you
-  had stay in force.
-- `d` puts every key back to its default, after asking. Your `[keys]` lines are
+- `r` reloads `[keys]` and the panels' tables, so you can edit the config in
+  another pane and try the result without restarting. A mistake is shown in
+  the dialog and the keys you had stay in force.
+- `d` puts every key back to its default, after asking. Your key lines are
   commented out rather than deleted, with a line above them saying when.
 - `Esc` closes it.
 
-If a mistake in `[keys]` stops mirador starting, the error says so, and
+If a mistake in a key table stops mirador starting, the error says so, and
 `mirador --reset-keys` does the same reset from the command line.
 
 ### Rearranging the dashboard
@@ -969,7 +1031,7 @@ In the task panel:
 | --- | --- |
 | `j` / `k`, `↑` / `↓` | Move the selection |
 | `g` / `G`, `Home` / `End` | Jump to first / last |
-| `PageUp` / `PageDown` | Move a screen at a time |
+| `PageUp` / `PageDown` | Move ten rows at a time |
 | `Space` | Toggle done |
 | `a` / `n` | Add a task |
 | `e` / `Enter` | Edit the selected task |
@@ -980,7 +1042,8 @@ In the task panel:
 | `/` | Filter by title, tag or notes |
 | `o` | Show the task file path |
 
-In the add/edit form, `Tab` and `Shift+Tab` move between fields, `Enter` saves
+Every key in this table can be moved in `[todo.keys]` — see
+[Changing a panel's keys](#changing-a-panels-keys). In the add/edit form, `Tab` and `Shift+Tab` move between fields, `Enter` saves
 and `Esc` cancels. While a form is open, global keys are suppressed, so typing
 a `q` into a task title does not quit the dashboard.
 

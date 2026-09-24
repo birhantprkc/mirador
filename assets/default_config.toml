@@ -231,6 +231,20 @@ zones = [
   { label = "Tokyo",  timezone = "Asia/Tokyo" },
 ]
 
+# The panel's own keys, written as under [keys] at the end of this file. The
+# dialog it opens keeps its own.
+[clocks.keys]
+# seconds     = "s"
+# add         = "a"
+# edit        = "e"
+# move_up     = ["shift+up", "K"]
+# move_down   = ["shift+down", "J"]
+# twelve_hour = "h"
+# remove      = "d"
+# up          = ["up", "k"]
+# down        = ["down", "j"]
+# show_path   = "o"
+
 # ---------------------------------------------------------------------------
 # Weather
 #
@@ -248,6 +262,13 @@ forecast_hours  = 8            # a floor, not a cap: a taller panel shows more,
                                # up to the 24 hours the fetch retrieves
 refresh_minutes = 30
 
+# The panel's own keys, written as under [keys] at the end of this file. The
+# dialog it opens keeps its own.
+[weather.keys]
+# refresh  = "r"
+# units    = "u"
+# location = "L"
+
 # ---------------------------------------------------------------------------
 # To-do list
 #
@@ -261,6 +282,27 @@ show_completed = false
 sort           = "smart"       # smart | due | priority | created | title
 date_format    = "%a %d %b"
 horizon_days   = 0             # hide tasks due further out than this; 0 = show all
+
+# The list's own keys, written as under [keys] at the end of this file. The
+# form, the filter and the delete question keep theirs, and Esc always clears
+# a filter.
+[todo.keys]
+# add               = ["a", "n"]
+# edit              = ["enter", "e"]
+# done              = "space"
+# delete            = "d"
+# up                = ["up", "k"]
+# down              = ["down", "j"]
+# first             = ["g", "home"]
+# last              = ["G", "end"]
+# page_up           = "pageup"
+# page_down         = "pagedown"
+# priority_next     = "p"
+# priority_previous = "P"
+# sort              = "s"
+# completed         = "c"
+# filter            = "/"
+# show_path         = "o"
 
 # ---------------------------------------------------------------------------
 # Notes
@@ -279,6 +321,22 @@ horizon_days   = 0             # hide tasks due further out than this; 0 = show 
 # file      = "~/notes/notes.toml"
 date_format = "%d %b"
 preview     = "below"        # below | beside
+
+# The list's own keys, written as under [keys] at the end of this file. The
+# editor, the search box and the delete question keep theirs, and Esc always
+# clears a search.
+[notes.keys]
+# new         = ["a", "n"]
+# edit        = ["enter", "e"]
+# delete      = "d"
+# up          = ["up", "k"]
+# down        = ["down", "j"]
+# first       = ["g", "home"]
+# last        = ["G", "end"]
+# scroll_up   = "pageup"
+# scroll_down = "pagedown"
+# search      = "/"
+# show_path   = "o"
 
 # ---------------------------------------------------------------------------
 # Stock watchlist
@@ -315,6 +373,18 @@ refresh_secs   = 120
 stagger_ms     = 400
 show_sparkline = true
 
+# The panel's own keys, written as under [keys] at the end of this file. The
+# add box and the remove question keep theirs.
+[stocks.keys]
+# add       = "a"
+# remove    = "d"
+# refresh   = "r"
+# up        = ["up", "k"]
+# down      = ["down", "j"]
+# first     = ["g", "home"]
+# last      = ["G", "end"]
+# show_path = "o"
+
 # ---------------------------------------------------------------------------
 # Calendar
 #
@@ -331,6 +401,14 @@ show_sparkline = true
 months      = 2          # months across; more stack when there is height.
                          # At most 12 — a year is already the whole cycle
 week_starts = "sunday"   # sunday | monday
+
+# The panel's own keys, written as under [keys] at the end of this file.
+[calendar.keys]
+# next_month     = ["n", "right", "l"]
+# previous_month = ["p", "left", "h"]
+# today          = "t"
+# previous_year  = ["up", "k"]
+# next_year      = ["down", "j"]
 
 # ---------------------------------------------------------------------------
 # Agenda
@@ -361,6 +439,19 @@ week_starts = "sunday"   # sunday | monday
 days          = 7        # how far ahead to look; clamped to 1 through 365
 show_location = true     # show the location when the row has room for both
 refresh_secs  = 60       # how often to re-read the file; no faster than 5
+
+# The panel's own keys, written as under [keys] at the end of this file. The
+# dialog it opens keeps its own.
+[agenda.keys]
+# file      = "f"
+# reload    = "r"
+# up        = ["up", "k"]
+# down      = ["down", "j"]
+# first     = ["g", "home"]
+# last      = ["G", "end"]
+# page_up   = "pageup"
+# page_down = "pagedown"
+# show_path = "o"
 
 # ---------------------------------------------------------------------------
 # News
@@ -413,6 +504,31 @@ url  = "https://phys.org/rss-feed/space-news/"
 name = "ARS TECHNICA"
 url  = "https://feeds.arstechnica.com/arstechnica/index"
 
+# The panel's own keys, written as under [keys] at the end of this file.
+[news.keys]
+# show_link = "o"
+# copy      = "y"
+# open      = "enter"
+# refresh   = "r"
+# up        = ["up", "k"]
+# down      = ["down", "j"]
+
+# ---------------------------------------------------------------------------
+# Watch log
+#
+# What changed since you last looked. Nothing to set but its keys.
+# ---------------------------------------------------------------------------
+[watchlog]
+
+# The panel's own keys, written as under [keys] at the end of this file.
+[watchlog.keys]
+# up        = ["up", "k"]
+# down      = ["down", "j"]
+# first     = ["g", "home"]
+# last      = ["G", "end"]
+# page_up   = "pageup"
+# page_down = "pagedown"
+
 # ---------------------------------------------------------------------------
 # Pomodoro
 #
@@ -447,6 +563,14 @@ auto_start               = false  # begin the next phase without a keypress
 chime                    = false
 chime_command            = []
 
+# The panel's own keys, written as under [keys] at the end of this file.
+[pomodoro.keys]
+# toggle  = "space"
+# next    = "n"
+# longer  = ["+", "="]
+# shorter = ["-", "_"]
+# reset   = "r"
+
 # ---------------------------------------------------------------------------
 # CPU
 # ---------------------------------------------------------------------------
@@ -464,6 +588,10 @@ show_per_core = true
 warn_pct      = 70.0
 critical_pct  = 90.0
 
+# The panel's own keys, written as under [keys] at the end of this file.
+[cpu.keys]
+# per_core = "c"
+
 # ---------------------------------------------------------------------------
 # Memory
 #
@@ -474,6 +602,10 @@ critical_pct  = 90.0
 history     = 120             # a floor, not a cap — see the note under [cpu]
 sample_secs = 2               # see the note under [cpu]
 show_swap   = true
+
+# The panel's own keys, written as under [keys] at the end of this file.
+[memory.keys]
+# swap = "s"
 
 # ---------------------------------------------------------------------------
 # Disk
@@ -494,6 +626,10 @@ history         = 120         # a floor, not a cap — see the note under [cpu]
 show_io         = true
 warn_above_pct  = 80
 alert_above_pct = 95
+
+# The panel's own keys, written as under [keys] at the end of this file.
+[disk.keys]
+# io = "i"
 
 # ---------------------------------------------------------------------------
 # Battery
@@ -526,6 +662,10 @@ sample_secs   = 5
 units         = "celsius"     # or "fahrenheit"
 alert_above_c = 95            # the status bar says so above this; 0 disables
 
+# The panel's own keys, written as under [keys] at the end of this file.
+[temperature.keys]
+# units = "u"
+
 # ---------------------------------------------------------------------------
 # Network
 #
@@ -548,14 +688,16 @@ sample_secs = 2               # see the note under [cpu]. Sampling the
 # action a list for several keys — quit = ["q", "x"] — or [] to unbind it.
 #
 # The resize keys are read before the focused panel sees them, so each needs
-# Ctrl or Alt held. On a Mac, where Ctrl+arrows switch desktops, Option works
-# as Alt once the terminal is set to send it that way (Terminal: "Use Option
-# as Meta key"; iTerm2: Left Option key "Esc+"). Terminals differ in what
-# Option+arrows send, so if those do nothing, letters travel everywhere:
+# Ctrl or Alt held. On a Mac, where Ctrl+arrows switch desktops, it depends on
+# the terminal. iTerm2 passes Option+arrows through as Alt+arrows, so
+# "alt+right" and its siblings work as they are. Terminal passes no Option
+# arrow through intact: turn on "Use Option as Meta key" and use letters,
 #   resize_narrower = "alt+h"
 #   resize_taller   = "alt+j"
 #   resize_shorter  = "alt+k"
 #   resize_wider    = "alt+l"
+# and leave Option+up and Option+down alone there, which that setting sends
+# as Esc and two characters: the Esc backs out of whatever is open.
 #
 # Every other key here is offered to the focused panel first, so a panel that
 # uses a key keeps it while that panel is focused. Two keys are not in this
@@ -563,8 +705,15 @@ sample_secs = 2               # see the note under [cpu]. Sampling the
 # of whatever is open. 1-9 still jump straight to a panel. A key given to two
 # actions is refused at startup, with the line to change.
 #
+# Every panel's own keys move the same way, in a table under the panel's
+# section — [todo.keys], [cpu.keys] and the rest, each listing its actions
+# with their defaults. A panel key may be one the dashboard also uses, and
+# wins while that panel is focused, but not a resize key, which the panel
+# would never see. The calculator has no table: its keys are what you type.
+#
 # Press ? twice in mirador to see every key with its default, load an edit
-# here without restarting (r), or put every key back to its default (d).
+# here or in a panel's table without restarting (r), or put every key back to
+# its default (d).
 # If a mistake here stops mirador starting, `mirador --reset-keys` does the
 # same from the command line. Either way your lines are commented out, not
 # deleted.

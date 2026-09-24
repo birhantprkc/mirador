@@ -37,6 +37,9 @@ pub struct ClocksConfig {
     /// match (#265). When off, `time_format` is used exactly as written, so a
     /// config that already asked for `%I:%M:%S %p` keeps its table.
     pub twelve_hour: bool,
+    /// The panel's keys, where the reader has moved them. See
+    /// [`crate::keymap::PanelKeymap`].
+    pub keys: crate::keymap::KeysConfig,
 }
 
 impl Default for ClocksConfig {
@@ -65,6 +68,7 @@ impl Default for ClocksConfig {
             show_offset: true,
             show_seconds: true,
             twelve_hour: false,
+            keys: crate::keymap::KeysConfig::default(),
         }
     }
 }
@@ -99,6 +103,9 @@ pub struct WeatherConfig {
     pub forecast_hours: u8,
     /// Minutes between refreshes.
     pub refresh_minutes: u64,
+    /// The panel's keys, where the reader has moved them. See
+    /// [`crate::keymap::PanelKeymap`].
+    pub keys: crate::keymap::KeysConfig,
 }
 
 impl Default for WeatherConfig {
@@ -110,6 +117,7 @@ impl Default for WeatherConfig {
             units: "imperial".into(),
             forecast_hours: 8,
             refresh_minutes: 30,
+            keys: crate::keymap::KeysConfig::default(),
         }
     }
 }
@@ -128,6 +136,9 @@ pub struct TodoConfig {
     pub date_format: String,
     /// Hide tasks whose due date is more than this many days out. 0 disables.
     pub horizon_days: u32,
+    /// The list's keys, where the reader has moved them. See
+    /// [`crate::keymap::PanelKeymap`].
+    pub keys: crate::keymap::KeysConfig,
 }
 
 impl Default for TodoConfig {
@@ -138,6 +149,7 @@ impl Default for TodoConfig {
             sort: "smart".into(),
             date_format: "%a %d %b".into(),
             horizon_days: 0,
+            keys: crate::keymap::KeysConfig::default(),
         }
     }
 }
@@ -162,6 +174,9 @@ pub struct StocksConfig {
     pub stagger_ms: u64,
     /// Draw the intraday sparkline when the panel is wide enough for it.
     pub show_sparkline: bool,
+    /// The panel's keys, where the reader has moved them. See
+    /// [`crate::keymap::PanelKeymap`].
+    pub keys: crate::keymap::KeysConfig,
 }
 
 impl Default for StocksConfig {
@@ -179,6 +194,7 @@ impl Default for StocksConfig {
             refresh_secs: 120,
             stagger_ms: 400,
             show_sparkline: true,
+            keys: crate::keymap::KeysConfig::default(),
         }
     }
 }
@@ -198,6 +214,9 @@ pub struct NotesConfig {
     /// for prose — where stacking gives each the full width and trades only
     /// height, which is the cheaper axis for both.
     pub preview: String,
+    /// The list's keys, where the reader has moved them. See
+    /// [`crate::keymap::PanelKeymap`].
+    pub keys: crate::keymap::KeysConfig,
 }
 
 impl Default for NotesConfig {
@@ -206,6 +225,7 @@ impl Default for NotesConfig {
             file: None,
             date_format: "%d %b".to_string(),
             preview: "below".to_string(),
+            keys: crate::keymap::KeysConfig::default(),
         }
     }
 }
@@ -227,6 +247,9 @@ pub struct AgendaConfig {
     pub show_location: bool,
     /// Seconds between re-reads of the file.
     pub refresh_secs: u64,
+    /// The panel's keys, where the reader has moved them. See
+    /// [`crate::keymap::PanelKeymap`].
+    pub keys: crate::keymap::KeysConfig,
 }
 
 impl Default for AgendaConfig {
@@ -239,6 +262,7 @@ impl Default for AgendaConfig {
             // should appear without the user pressing anything, and a minute is
             // the granularity a calendar changes at anyway.
             refresh_secs: 60,
+            keys: crate::keymap::KeysConfig::default(),
         }
     }
 }
@@ -254,6 +278,9 @@ pub struct CalendarConfig {
     pub months: u8,
     /// `sunday` or `monday`.
     pub week_starts: String,
+    /// The panel's keys, where the reader has moved them. See
+    /// [`crate::keymap::PanelKeymap`].
+    pub keys: crate::keymap::KeysConfig,
 }
 
 impl Default for CalendarConfig {
@@ -261,6 +288,7 @@ impl Default for CalendarConfig {
         Self {
             months: 2,
             week_starts: "sunday".to_string(),
+            keys: crate::keymap::KeysConfig::default(),
         }
     }
 }
@@ -307,6 +335,9 @@ pub struct PomodoroConfig {
     /// Run directly rather than through a shell, so there is no quoting to get
     /// wrong and no shell to inject into.
     pub chime_command: Vec<String>,
+    /// The panel's keys, where the reader has moved them. See
+    /// [`crate::keymap::PanelKeymap`].
+    pub keys: crate::keymap::KeysConfig,
 }
 
 impl Default for PomodoroConfig {
@@ -319,6 +350,7 @@ impl Default for PomodoroConfig {
             auto_start: false,
             chime: false,
             chime_command: Vec::new(),
+            keys: crate::keymap::KeysConfig::default(),
         }
     }
 }
@@ -363,6 +395,9 @@ pub struct CpuConfig {
     pub warn_pct: f32,
     /// Percentage above which the readout turns the error colour.
     pub critical_pct: f32,
+    /// The panel's keys, where the reader has moved them. See
+    /// [`crate::keymap::PanelKeymap`].
+    pub keys: crate::keymap::KeysConfig,
 }
 
 impl Default for CpuConfig {
@@ -373,6 +408,7 @@ impl Default for CpuConfig {
             show_per_core: true,
             warn_pct: 70.0,
             critical_pct: 90.0,
+            keys: crate::keymap::KeysConfig::default(),
         }
     }
 }
@@ -387,6 +423,9 @@ pub struct MemoryConfig {
     pub sample_secs: u64,
     /// Draw a swap row under the graph, when the machine has any.
     pub show_swap: bool,
+    /// The panel's keys, where the reader has moved them. See
+    /// [`crate::keymap::PanelKeymap`].
+    pub keys: crate::keymap::KeysConfig,
 }
 
 impl Default for MemoryConfig {
@@ -395,8 +434,18 @@ impl Default for MemoryConfig {
             history: 120,
             sample_secs: 2,
             show_swap: true,
+            keys: crate::keymap::KeysConfig::default(),
         }
     }
+}
+
+/// Watch log settings. It has none of its own but its keys.
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct WatchlogConfig {
+    /// The panel's keys, where the reader has moved them. See
+    /// [`crate::keymap::PanelKeymap`].
+    pub keys: crate::keymap::KeysConfig,
 }
 
 /// Battery panel settings.
@@ -434,6 +483,9 @@ pub struct TemperatureConfig {
     pub units: String,
     /// Above this, in Celsius, the hottest sensor is an alert. Zero disables.
     pub alert_above_c: u16,
+    /// The panel's keys, where the reader has moved them. See
+    /// [`crate::keymap::PanelKeymap`].
+    pub keys: crate::keymap::KeysConfig,
 }
 
 impl Default for TemperatureConfig {
@@ -443,6 +495,7 @@ impl Default for TemperatureConfig {
             sample_secs: 5,
             units: "celsius".into(),
             alert_above_c: 95,
+            keys: crate::keymap::KeysConfig::default(),
         }
     }
 }
@@ -467,6 +520,9 @@ pub struct DiskConfig {
     /// At or above this percentage used, a volume's figures turn red and the
     /// status bar says so. Zero disables.
     pub alert_above_pct: u16,
+    /// The panel's keys, where the reader has moved them. See
+    /// [`crate::keymap::PanelKeymap`].
+    pub keys: crate::keymap::KeysConfig,
 }
 
 impl Default for DiskConfig {
@@ -478,6 +534,7 @@ impl Default for DiskConfig {
             show_io: true,
             warn_above_pct: 80,
             alert_above_pct: 95,
+            keys: crate::keymap::KeysConfig::default(),
         }
     }
 }
@@ -543,6 +600,9 @@ pub struct NewsConfig {
     /// `["open"]` on macOS, `["xdg-open"]` on Linux, `["cmd", "/c", "start"]`
     /// on Windows — or name a specific browser.
     pub open_command: Vec<String>,
+    /// The panel's keys, where the reader has moved them. See
+    /// [`crate::keymap::PanelKeymap`].
+    pub keys: crate::keymap::KeysConfig,
 }
 
 impl Default for NewsConfig {
@@ -567,6 +627,7 @@ impl Default for NewsConfig {
             refresh_minutes: 60,
             per_feed: 4,
             open_command: Vec::new(),
+            keys: crate::keymap::KeysConfig::default(),
         }
     }
 }

@@ -99,6 +99,20 @@ touch:
 7. Add tests for the logic that is not drawing — parsing, formatting,
    thresholds, state transitions.
 
+If your widget has keys, they go through a keymap like every other panel's,
+so a reader can move them and the hints cannot drift: declare them as a
+table of `keymap::Meta` beside a small action enum (`joins` draws a pair such
+as `g / G` on one hint), match on `PanelKeymap::action` in `handle_key`,
+return `PanelKeymap::bindings` from `Panel::bindings`, implement
+`Panel::set_keys`, give the config struct a `keys: KeysConfig` field, add an
+entry to `KEY_SCOPES` in `src/widgets/mod.rs`, document the table under the
+panel's section in `assets/default_config.toml`, and add the row to the
+README's table under "Changing a panel's keys". `src/widgets/cpu.rs` is the
+smallest example. Keys that take typing — a form, a search box — stay out of
+the map. Tests fail until the shipped config and the README agree with the
+code, and `keymap::assert_every_key_works` checks the panel answers every key
+it advertises.
+
 Steps 2, 4 and 5 are the ones that bite. The calculator is the proof twice
 over: the pull request that added the panel touched `src/config/layout.rs`,
 which this list did not name at the time — and touched no `src/grid.rs` at
